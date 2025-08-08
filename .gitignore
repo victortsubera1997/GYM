@@ -1,0 +1,69 @@
+# =========================
+# Node.js / JavaScript
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+.pnpm-debug.log
+
+# =========================
+# Build / dist / cache
+# =========================
+dist/
+build/
+.cache/
+.expo/
+.expo-shared/
+web-build/
+tmp/
+temp/
+
+# =========================
+# React / Vite / CRA
+# =========================
+*.tsbuildinfo
+*.tgz
+
+# =========================
+# Expo / React Native
+# =========================
+ios/Pods/
+ios/build/
+android/.gradle/
+android/.idea/
+android/.cxx/
+android/local.properties
+android/app/build/
+*.keystore
+*.jks
+
+# =========================
+# OS / IDE / Editors
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.iml
+
+# =========================
+# Env files / secrets
+# =========================
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+*.pem
+*.key
+*.crt
+
+# =========================
+# Test / Coverage
+# =========================
+coverage/
+*.lcov

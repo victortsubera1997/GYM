@@ -8,15 +8,14 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Якщо .env лежить у папці backend — цього достатньо.
-// Можеш і просто dotenv.config() використати, якщо файл в корені backend.
+// .env ТУТ, у папці backend
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const PORT = process.env.PORT || 5050;
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  console.error('❌ MONGODB_URI не заданий у .env');
+  console.error('❌ MONGODB_URI не заданий у backend/.env');
   process.exit(1);
 }
 

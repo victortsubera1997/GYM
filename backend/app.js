@@ -1,3 +1,4 @@
+// backend/app.js
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth.routes.js';
@@ -7,19 +8,20 @@ import adminRoutes from './routes/admin.routes.js';
 const app = express();
 
 const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:8081',
-  'http://192.168.100.103:8081',
+  'http://localhost:3000',           // admin-panel локально
+  'http://localhost:8081',           // Expo web
+  // ДОДАЙ СЮДИ свій IP для браузера на інших пристроях (адмінка):
+  // 'http://192.168.100.103:3000',
+  // і для Expo web/dev:
+  // 'http://192.168.100.103:8081',
 ];
 
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = `CORS помилка: Доступ заборонено для origin ${origin}`;
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
+  origin(origin, callback) {
+    if (!origin) return callback(null, true); // Postman/curl
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    const msg = `CORS помилка: Доступ заборонено для origin ${origin}`;
+    return callback(new Error(msg), false);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -28,10 +30,12 @@ app.use(cors({
 
 app.use(express.json());
 
-// healthcheck
-app.get('/api/ping', (_req, res) => res.json({ ok: true }));
+// --- healthcheck (для тесту з телефону/браузера)
+app.get('/api/ping', (_req, res) => {
+  res.json({ ok: true, ts: new Date().toISOString() });
+});
 
-// маршрути
+// --- твої маршрути
 app.use('/api/auth', authRoutes);
 app.use('/api/memberships', membershipRoutes);
 app.use('/api/admin', adminRoutes);

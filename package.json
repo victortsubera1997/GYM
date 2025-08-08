@@ -1,0 +1,11 @@
+{
+  "name": "gym-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start:all": "concurrently \"npm run dev --prefix backend\" \"npm start --prefix admin-panel\" \"npx expo start --prefix my-app\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

@@ -1,69 +1,36 @@
-# =========================
-# Node.js / JavaScript
-# =========================
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-package-lock.json
-yarn.lock
-.pnpm-debug.log
+# Усі node_modules у будь-якій вкладеності
+**/node_modules/
 
-# =========================
-# Build / dist / cache
-# =========================
-dist/
-build/
-.cache/
-.expo/
-.expo-shared/
-web-build/
-tmp/
-temp/
+# Збірки/кеші в усіх пакетах
+**/dist/
+**/build/
+**/.cache/
+**/web-build/
+**/tmp/
+**/temp/
 
-# =========================
-# React / Vite / CRA
-# =========================
-*.tsbuildinfo
-*.tgz
-
-# =========================
 # Expo / React Native
-# =========================
-ios/Pods/
-ios/build/
-android/.gradle/
-android/.idea/
-android/.cxx/
-android/local.properties
-android/app/build/
-*.keystore
-*.jks
+**/.expo/
+**/.expo-shared/
+**/android/build/
+**/android/.gradle/
+**/android/.cxx/
+**/ios/build/
+**/ios/Pods/
 
-# =========================
-# OS / IDE / Editors
-# =========================
+# IDE / OS
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 *.iml
 
-# =========================
-# Env files / secrets
-# =========================
-.env
-.env.local
-.env.development
-.env.production
-.env.test
+# Env/секрети (залишай у репо тільки .env.example)
+**/.env
+**/.env.*.local
 *.pem
 *.key
 *.crt
 
-# =========================
-# Test / Coverage
-# =========================
-coverage/
-*.lcov
+# Тести/coverage
+**/coverage/

@@ -1,3 +1,4 @@
+// backend/controllers/auth.controller.js
 import User from '../models/User.model.js';
 import Membership from '../models/Membership.model.js';
 import jwt from 'jsonwebtoken';
@@ -5,6 +6,63 @@ import jwt from 'jsonwebtoken';
 // ===== helper: sign token =====
 const signToken = (userId) =>
   jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+// Small helpers
+const parseNumber = (v) => (v === undefined || v === null || v === '' ? undefined : Number(v));
+const isFiniteNum = (n) => typeof n === 'number' && Number.isFinite(n);
+
+// ---- мапінг в bodyMetrics під нову схему ----
+const mapBodyMetricsPatch = (srcRaw = {}) => {
+  // підтримуємо старі ключі теж (armsCm → bicepsCm, thighsCm → thighCm, calvesCm → calfCm)
+  const src = srcRaw.bodyMetrics ? srcRaw.bodyMetrics : srcRaw;
+
+  const num = (k) => {
+    const v = parseNumber(src[k]);
+    return isFiniteNum(v) ? v : undefined;
+  };
+
+  const patch = {};
+
+  // базові
+  if (num('heightCm') !== undefined) patch.heightCm = num('heightCm');
+
+  // вага: приймаємо як weightKg або currentWeightKg
+  const incomingWeight =
+    num('currentWeightKg') !== undefined ? num('currentWeightKg') : num('weightKg');
+  if (incomingWeight !== undefined) patch.currentWeightKg = incomingWeight;
+
+  if (num('goalWeightKg') !== undefined) patch.goalWeightKg = num('goalWeightKg');
+
+  // виміри (підтримка старих назв)
+  if (num('neckCm') !== undefined) patch.neckCm = num('neckCm');
+  if (num('chestCm') !== undefined) patch.chestCm = num('chestCm');
+  if (num('waistCm') !== undefined) patch.waistCm = num('waistCm');
+  if (num('hipsCm') !== undefined) patch.hipsCm = num('hipsCm');
+
+  const biceps = num('bicepsCm') ?? num('armsCm');
+  if (biceps !== undefined) patch.bicepsCm = biceps;
+
+  const thigh = num('thighCm') ?? num('thighsCm');
+  if (thigh !== undefined) patch.thighCm = thigh;
+
+  const calf = num('calfCm') ?? num('calvesCm');
+  if (calf !== undefined) patch.calfCm = calf;
+
+  // стать (не числове)
+  if (src.sex !== undefined) {
+    const allowed = ['male', 'female', 'other', null];
+    if (allowed.includes(src.sex)) patch.sex = src.sex;
+  }
+
+  // 🎯 важливо: не перетворюємо "age" у birthday автоматично, бо це неточно.
+  // Якщо буде `birthday`, можемо зберегти:
+  if (src.birthday) {
+    const d = new Date(src.birthday);
+    if (!isNaN(d.getTime())) patch.birthday = d;
+  }
+
+  return patch;
+};
 
 // ===== Реєстрація =====
 export const register = async (req, res) => {
@@ -34,6 +92,8 @@ export const register = async (req, res) => {
         membershipEnd: user.membershipEnd,
         visitsRemaining: user.visitsRemaining,
         checkinCode: user.checkinCode,
+        bodyMetrics: user.bodyMetrics,
+        settings: user.settings,
       },
     });
   } catch (error) {
@@ -68,6 +128,8 @@ export const login = async (req, res) => {
         membershipEnd: user.membershipEnd,
         visitsRemaining: user.visitsRemaining,
         checkinCode: user.checkinCode,
+        bodyMetrics: user.bodyMetrics,
+        settings: user.settings,
       },
     });
   } catch (error) {
@@ -83,7 +145,13 @@ export const getProfile = async (req, res) => {
       .select('-password')
       .populate('membership');
     if (!user) return res.status(404).json({ message: 'Користувача не знайдено' });
-    res.json({ user });
+
+    // повертати вагу коротко (останні 10 записів)
+    const weightLogPreview = (user.weightLog || [])
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 10);
+
+    res.json({ user: { ...user.toObject(), weightLog: weightLogPreview } });
   } catch (error) {
     console.error('Помилка отримання профілю:', error);
     res.status(500).json({ message: 'Помилка сервера', error: error.message });
@@ -98,6 +166,10 @@ export const getMyData = async (req, res) => {
       .populate('membership');
     if (!u) return res.status(404).json({ message: 'Користувача не знайдено' });
 
+    const weightLogPreview = (u.weightLog || [])
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 5);
+
     res.json({
       id: u._id,
       name: u.name,
@@ -107,6 +179,9 @@ export const getMyData = async (req, res) => {
       membershipEnd: u.membershipEnd,
       visitsRemaining: u.visitsRemaining,
       checkinCode: u.checkinCode,
+      bodyMetrics: u.bodyMetrics,
+      settings: u.settings,
+      weightLog: weightLogPreview,
     });
   } catch (error) {
     console.error('Помилка отримання даних користувача:', error);
@@ -133,14 +208,144 @@ export const updateProfile = async (req, res) => {
     user.phone = phone;
     if (password) user.password = password;
 
+    // --- оновлення антропометрії
+    const metricsPatch = mapBodyMetricsPatch(req.body);
+    let pushedWeight = null;
+    if (Object.keys(metricsPatch).length) {
+      // якщо прийшла поточна вага — додамо у weightLog
+      if (metricsPatch.currentWeightKg !== undefined) {
+        pushedWeight = metricsPatch.currentWeightKg;
+        user.weightLog = user.weightLog || [];
+        user.weightLog.push({
+          date: new Date(),
+          weightKg: pushedWeight,
+          note: 'manual update',
+        });
+      }
+      user.bodyMetrics = {
+        ...(user.bodyMetrics || {}),
+        ...metricsPatch,
+      };
+    }
+
     await user.save();
 
     res.json({
       message: 'Профіль оновлено',
-      user: { id: user._id, name: user.name, phone: user.phone },
+      user: {
+        id: user._id,
+        name: user.name,
+        phone: user.phone,
+        bodyMetrics: user.bodyMetrics,
+        settings: user.settings,
+      },
     });
   } catch (error) {
     console.error('Помилка оновлення профілю:', error);
+    res.status(500).json({ message: 'Помилка сервера', error: error.message });
+  }
+};
+
+// ===== Додати запис ваги =====
+export const addWeightEntry = async (req, res) => {
+  try {
+    const { date, weightKg, note } = req.body;
+    const w = parseNumber(weightKg);
+    if (!isFiniteNum(w) || w <= 0) return res.status(400).json({ message: 'Невірна вага (kg)' });
+
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'Користувача не знайдено' });
+
+    const entry = { date: date ? new Date(date) : new Date(), weightKg: w, note: note || '' };
+    user.weightLog = user.weightLog || [];
+    user.weightLog.push(entry);
+
+    // синхронізуємо поточну вагу в bodyMetrics
+    user.bodyMetrics = {
+      ...(user.bodyMetrics || {}),
+      currentWeightKg: w,
+    };
+
+    await user.save();
+
+    // повернемо останні 30 записів
+    const sorted = [...user.weightLog]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 30);
+
+    res.status(201).json({
+      message: 'Додано',
+      entry,
+      weightLog: sorted,
+      bodyMetrics: user.bodyMetrics,
+    });
+  } catch (error) {
+    console.error('Помилка додавання ваги:', error);
+    res.status(500).json({ message: 'Помилка сервера', error: error.message });
+  }
+};
+
+// ===== Отримати журнал ваги =====
+export const listWeightLog = async (req, res) => {
+  try {
+    const { from, to, limit } = req.query;
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'Користувача не знайдено' });
+
+    let items = user.weightLog || [];
+    if (from) items = items.filter((x) => new Date(x.date) >= new Date(from));
+    if (to) items = items.filter((x) => new Date(x.date) <= new Date(to));
+
+    items.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const lim = parseInt(limit, 10);
+    if (Number.isFinite(lim) && lim > 0) items = items.slice(0, lim);
+
+    res.json({ weightLog: items });
+  } catch (error) {
+    console.error('Помилка отримання журналу ваги:', error);
+    res.status(500).json({ message: 'Помилка сервера', error: error.message });
+  }
+};
+
+// ===== Видалити запис ваги =====
+export const deleteWeightEntry = async (req, res) => {
+  try {
+    const { entryId } = req.params;
+    if (!entryId) return res.status(400).json({ message: 'entryId обов’язковий' });
+
+    const result = await User.updateOne(
+      { _id: req.user._id },
+      { $pull: { weightLog: { _id: entryId } } }
+    );
+
+    if (result.modifiedCount === 0) return res.status(404).json({ message: 'Запис не знайдено' });
+
+    // повернемо оновлений список
+    const user = await User.findById(req.user._id);
+    const sorted = (user.weightLog || []).sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json({ message: 'Видалено', weightLog: sorted });
+  } catch (error) {
+    console.error('Помилка видалення запису ваги:', error);
+    res.status(500).json({ message: 'Помилка сервера', error: error.message });
+  }
+};
+
+// ===== Оновити налаштування приватності =====
+export const updateSettingsPrivacy = async (req, res) => {
+  try {
+    const { privacy } = req.body;
+    const allowed = ['public', 'friends', 'private'];
+    if (!allowed.includes(privacy)) return res.status(400).json({ message: 'Некоректна приватність' });
+
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'Користувача не знайдено' });
+
+    user.settings = { ...(user.settings || {}), privacy };
+    await user.save();
+
+    res.json({ message: 'Налаштування оновлено', settings: user.settings });
+  } catch (error) {
+    console.error('Помилка оновлення налаштувань:', error);
     res.status(500).json({ message: 'Помилка сервера', error: error.message });
   }
 };

@@ -1,40 +1,68 @@
 import express from 'express';
+import protect, { adminOnly } from '../middlewares/auth.middleware.js';
+
 import {
+  // базове
   register,
   login,
   getProfile,
   updateProfile,
+  getMyData,
+
+  // вага / налаштування приватності
+  addWeightEntry,
+  listWeightLog,
+  deleteWeightEntry,
+  updateSettingsPrivacy,
+
+  // адмін
   getAllUsers,
+  searchUsers,
   assignMembership,
   deleteUser,
-  searchUsers,
+
+  // check-in
   checkin,
-  getMyData,
   checkinByQR,
   checkinByQRParam,
 } from '../controllers/auth.controller.js';
-import protect, { adminOnly } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
-// Публічне
+/**
+ * ПУБЛІЧНЕ
+ */
 router.post('/register', register);
 router.post('/login', login);
 
-// Профіль
-router.get('/profile', protect, getProfile);
-router.put('/profile', protect, updateProfile);
+/**
+ * ПРОФІЛЬ КОРИСТУВАЧА
+ */
+router.get('/profile', protect, getProfile);      // повертає user з bodyMetrics, settings, weightLog (скорочено або з пагінацією)
+router.put('/profile', protect, updateProfile);   // оновлює name/phone/password + bodyMetrics (height/weight/etc.)
+router.get('/me', protect, getMyData);            // мобільний “лайт” профіль (у т.ч. checkinCode)
 
-// Дані для мобільного профілю (з checkinCode)
-router.get('/me', protect, getMyData);
+/**
+ * ВАГА / НАЛАШТУВАННЯ ПРИВАТНОСТІ
+ */
+router.post('/profile/weight', protect, addWeightEntry);          // { date?: ISO, weightKg: number }
+router.get('/profile/weight', protect, listWeightLog);            // ?limit=...&from=...&to=...
+router.delete('/profile/weight/:entryId', protect, deleteWeightEntry);
 
-// Адмін
+router.patch('/profile/settings', protect, updateSettingsPrivacy); // { privacy: 'public'|'friends'|'private' }
+
+/**
+ * АДМІН
+ */
 router.get('/users', protect, adminOnly, getAllUsers);
+// ВАЖЛИВО: search вище за /users/:id, щоби не конфліктувало зі статичним сегментом
 router.get('/users/search', protect, adminOnly, searchUsers);
 router.post('/assign-membership', protect, adminOnly, assignMembership);
 router.delete('/users/:id', protect, adminOnly, deleteUser);
 
-// Check-in
+/**
+ * CHECK-IN
+ */
 router.post('/checkin', protect, adminOnly, checkin);
 router.post('/checkin/qr', protect, adminOnly, checkinByQR);
 router.post('/checkin/:code', protect, adminOnly, checkinByQRParam);

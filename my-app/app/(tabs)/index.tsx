@@ -1,8 +1,34 @@
 // app/(tabs)/index.tsx
-import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
+
+const COLORS = {
+  bg: '#0A0B14',
+  surface: '#1A1D2E',
+  primary: '#6366F1',
+  text: '#FFFFFF',
+  textSecondary: '#94A3B8',
+  textMuted: '#64748B',
+  border: '#20273A',
+};
+
+const Tile = ({ title, sub, onPress }: { title: string; sub: string; onPress: () => void }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  return (
+    <Pressable
+      onPressIn={() => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true }).start()}
+      onPressOut={() => Animated.spring(scaleAnim, { toValue: 1, friction: 5, tension: 40, useNativeDriver: true }).start()}
+      onPress={onPress}
+    >
+      <Animated.View style={[styles.tile, { transform: [{ scale: scaleAnim }] }]}>
+        <Text style={styles.tileTitle}>{title}</Text>
+        <Text style={styles.tileSub}>{sub}</Text>
+      </Animated.View>
+    </Pressable>
+  );
+};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -10,42 +36,37 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.greeting}>Привіт, {user?.name || user?.phone}! 👋</Text>
-      <Text style={styles.sub}>Що робимо сьогодні?</Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        <Text style={styles.greeting}>Привіт, {user?.name || user?.phone}! 👋</Text>
+        <Text style={styles.sub}>Що робимо сьогодні?</Text>
 
-      <View style={styles.grid}>
-        <Pressable style={styles.tile} onPress={() => router.push('/membership')}>
-          <Text style={styles.tileTitle}>Абонемент</Text>
-          <Text style={styles.tileSub}>Статус та QR</Text>
-        </Pressable>
-
-        <Pressable style={styles.tile} onPress={() => router.push('/program')}>
-          <Text style={styles.tileTitle}>Щоденник</Text>
-          <Text style={styles.tileSub}>Записи тренувань</Text>
-        </Pressable>
-
-        <Pressable style={styles.tile} onPress={() => router.push('/schedule')}>
-          <Text style={styles.tileTitle}>Розклад</Text>
-          <Text style={styles.tileSub}>Мої тренування</Text>
-        </Pressable>
-      </View>
+        <View style={styles.grid}>
+          <Tile title="Абонемент" sub="Статус та QR" onPress={() => router.push('/membership')} />
+          {/* Профіль є у таб-барі, але можна додати швидкий перехід */}
+          <Tile title="Профіль" sub="Дані акаунта" onPress={() => router.push('/profile')} />
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0B1117', padding: 20, justifyContent: 'center' },
-  greeting: { fontSize: 24, fontWeight: '800', color: '#E6EDF3' },
-  sub: { color: '#8A93A3', marginTop: 6, marginBottom: 18 },
-
-  grid: { gap: 12 },
+  screen: { flex: 1, backgroundColor: COLORS.bg, paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 30 },
+  greeting: { fontSize: 28, fontWeight: '800', color: COLORS.text, letterSpacing: -0.5 },
+  sub: { color: COLORS.textSecondary, marginTop: 6, marginBottom: 20, fontSize: 15 },
+  grid: { gap: 14 },
   tile: {
-    backgroundColor: '#0F1621',
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: '#1D2633',
-    borderRadius: 14,
-    padding: 18,
+    borderColor: COLORS.border,
+    borderRadius: 18,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  tileTitle: { color: '#E6EDF3', fontWeight: '800', fontSize: 16 },
-  tileSub: { color: '#B7C2D0', marginTop: 6 },
+  tileTitle: { color: COLORS.text, fontWeight: '800', fontSize: 17 },
+  tileSub: { color: COLORS.textMuted, marginTop: 6, fontSize: 14 },
 });

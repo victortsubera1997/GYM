@@ -1,34 +1,42 @@
-// app/(tabs)/_layout.tsx
 import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Tabs, Link, Redirect } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { Pressable } from 'react-native';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-import { useAuth } from '../../context/AuthContext'; // ← ✅ ПРАВИЛЬНИЙ ШЛЯХ
+import { useAuth } from '../../context/AuthContext';
 
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
+function TabBarIcon(
+  props: { name: React.ComponentProps<typeof FontAwesome>['name']; color: string }
+) {
+  return <FontAwesome size={24} style={{ marginBottom: -2 }} {...props} />;
 }
 
 export default function TabsLayout() {
   const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
 
-  if (!user) {
-    return <Redirect href="/auth/login" />;
-  }
+  if (!user) return <Redirect href="/auth/login" />;
 
   return (
     <Tabs
+      initialRouteName="index"
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: useClientOnlyValue(false, true),
+        headerTintColor: theme.text,
+        headerStyle: { backgroundColor: theme.background },
+        tabBarActiveTintColor: theme.tint,
+        tabBarInactiveTintColor: theme.icon,
+        tabBarStyle: {
+          backgroundColor: theme.background,
+          borderTopColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+        },
+        sceneStyle: {
+          backgroundColor: theme.background,
+        },
       }}
     >
       <Tabs.Screen
@@ -36,22 +44,11 @@ export default function TabsLayout() {
         options={{
           title: 'Головна',
           tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? 'light'].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+          // без кнопок у хедері — чисто і темно :)
+          headerRight: () => <Pressable disabled style={{ opacity: 0, width: 0 }} />,
         }}
       />
+
       <Tabs.Screen
         name="schedule"
         options={{
@@ -59,13 +56,16 @@ export default function TabsLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="calendar" color={color} />,
         }}
       />
+
       <Tabs.Screen
         name="program"
         options={{
-          title: 'Програма',
-          tabBarIcon: ({ color }) => <TabBarIcon name="bars" color={color} />,
+          // за нашим планом — це особистий щоденник
+          title: 'Щоденник',
+          tabBarIcon: ({ color }) => <TabBarIcon name="book" color={color} />,
         }}
       />
+
       <Tabs.Screen
         name="membership"
         options={{
@@ -73,6 +73,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="id-card" color={color} />,
         }}
       />
+
       <Tabs.Screen
         name="profile"
         options={{

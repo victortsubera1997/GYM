@@ -1,118 +1,51 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+// app/(tabs)/index.tsx
+import React from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../utils/api';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
-
-  const [membership, setMembership] = useState<{ name: string; expiresAt: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchProfile = async () => {
-      try {
-        const res = await api.get('/api/auth/profile');
-        const userData = res.data.user;
-
-        if (userData.membership) {
-          setMembership({
-            name: userData.membership.name || 'Абонемент',
-            expiresAt: userData.membershipEnd ? new Date(userData.membershipEnd).toLocaleDateString('uk-UA') : '-',
-          });
-        } else {
-          setMembership(null);
-        }
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-        setMembership(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [isAuthenticated]);
-
-  if (!isAuthenticated) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.greeting}>Будь ласка, увійдіть у систему</Text>
-      </View>
-    );
-  }
-
-  if (loading) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
+  const { user } = useAuth();
 
   return (
-    <View style={styles.container}>
+    <View style={styles.screen}>
       <Text style={styles.greeting}>Привіт, {user?.name || user?.phone}! 👋</Text>
+      <Text style={styles.sub}>Що робимо сьогодні?</Text>
 
-      {membership ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Твій абонемент:</Text>
-          <Text>{membership.name}</Text>
-          <Text>До: {membership.expiresAt}</Text>
-        </View>
-      ) : (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Абонемент відсутній</Text>
-          <Text>Будь ласка, оформіть абонемент</Text>
-        </View>
-      )}
+      <View style={styles.grid}>
+        <Pressable style={styles.tile} onPress={() => router.push('/membership')}>
+          <Text style={styles.tileTitle}>Абонемент</Text>
+          <Text style={styles.tileSub}>Статус та QR</Text>
+        </Pressable>
 
-      <Pressable style={styles.button} onPress={() => router.push('/schedule')}>
-        <Text style={styles.buttonText}>📅 Перейти до розкладу</Text>
-      </Pressable>
+        <Pressable style={styles.tile} onPress={() => router.push('/program')}>
+          <Text style={styles.tileTitle}>Щоденник</Text>
+          <Text style={styles.tileSub}>Записи тренувань</Text>
+        </Pressable>
+
+        <Pressable style={styles.tile} onPress={() => router.push('/schedule')}>
+          <Text style={styles.tileTitle}>Розклад</Text>
+          <Text style={styles.tileSub}>Мої тренування</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    gap: 20,
-    justifyContent: 'center',
-    backgroundColor: '#fff',
+  screen: { flex: 1, backgroundColor: '#0B1117', padding: 20, justifyContent: 'center' },
+  greeting: { fontSize: 24, fontWeight: '800', color: '#E6EDF3' },
+  sub: { color: '#8A93A3', marginTop: 6, marginBottom: 18 },
+
+  grid: { gap: 12 },
+  tile: {
+    backgroundColor: '#0F1621',
+    borderWidth: 1,
+    borderColor: '#1D2633',
+    borderRadius: 14,
+    padding: 18,
   },
-  greeting: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  card: {
-    backgroundColor: '#f2f2f2',
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 10,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    marginBottom: 5,
-  },
-  button: {
-    backgroundColor: '#3478f6',
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
+  tileTitle: { color: '#E6EDF3', fontWeight: '800', fontSize: 16 },
+  tileSub: { color: '#B7C2D0', marginTop: 6 },
 });

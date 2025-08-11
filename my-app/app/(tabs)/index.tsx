@@ -1,6 +1,6 @@
 // app/(tabs)/index.tsx
-import React, { useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, Platform, ScrollView } from 'react-native';
+import React, { useRef, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated, Platform, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 
@@ -34,15 +34,29 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
+  // pull-to-refresh (без вібрації)
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // Якщо треба — онови дані для Home тут
+      await new Promise((r) => setTimeout(r, 400));
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
         <Text style={styles.greeting}>Привіт, {user?.name || user?.phone}! 👋</Text>
         <Text style={styles.sub}>Що робимо сьогодні?</Text>
 
         <View style={styles.grid}>
           <Tile title="Абонемент" sub="Статус та QR" onPress={() => router.push('/membership')} />
-          {/* Профіль є у таб-барі, але можна додати швидкий перехід */}
           <Tile title="Профіль" sub="Дані акаунта" onPress={() => router.push('/profile')} />
         </View>
       </ScrollView>
@@ -51,7 +65,12 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.bg, paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 30 },
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 30,
+  },
   greeting: { fontSize: 28, fontWeight: '800', color: COLORS.text, letterSpacing: -0.5 },
   sub: { color: COLORS.textSecondary, marginTop: 6, marginBottom: 20, fontSize: 15 },
   grid: { gap: 14 },
